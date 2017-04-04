@@ -219,40 +219,19 @@
            
            <div class="textblk">
             <h2>Carbon Scoreboard</h2>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>First Name</th>
-                  <th>Last Name</th>
-                  <th>email</th>
-                  <th>lbsCO2</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th scope="row">1</th>
-                  <td>Mark</td>
-                  <td>Otto</td>
-                  <td>@mdo</td>
-                  <td>34,070</td>
-                </tr>
-                <tr>
-                  <th scope="row">2</th>
-                  <td>Jacob</td>
-                  <td>Thornton</td>
-                  <td>@fat</td>
-                  <td>36,500</td>
-                </tr>
-                <tr>
-                  <th scope="row">3</th>
-                  <td>Larry</td>
-                  <td>the Bird</td>
-                  <td>@twitter</td>
-                  <td>36,870</td>
-                </tr>
-              </tbody>
-            </table>
+            <!-- demo root element -->
+            <div id="demo">
+              <form id="search">
+                <input name="query" v-model="searchQuery" placeholder="search the scoreboard">
+              </form>
+              <demo-grid class="table"
+                v-clearform
+                :data="gridData"
+                :columns="gridColumns"
+                :filter-key="searchQuery">
+              </demo-grid>
+            </div>
+              
 
            </div>
            <div class="section"></div>
@@ -266,13 +245,17 @@
            <div class="section"></div>
            <div class="textblk">
                 <h2>post your data to the scoreboard!</h2>
-                <form method="GET" action="">
-                    <input type="text" placeholder="name" name="name">
-                    <input type="email" pattern="[^ @]*@[^ @]*" name="email" value="" placeholder="type email...">
-                    <input type="text" placeholder="carbon score" name="carbon_score">
-                    <input type="submit" value="submit!">
+                <form id="postScoreForm" v-on:submit.prevent="onSubmit">
+                    <input type="text" placeholder="first name" v-model="fname" required>
+                    <input type="text" placeholder="last name" v-model="lname" required>
+                    <input type="email" pattern="[^ @]*@[^ @]*" v-model="email" value="" placeholder="type email..." required>
+                    <input type="text" placeholder="carbon score" v-model="lbsCO2" required>
+                    <input type="submit" value="submit!" v-on:click.stop="postScore">
                 </form>
           </div>
+
+
+
             <div>
                 <a class="post lg title" href="#backtotop">
                     <h2>return to top of page</h2>
@@ -286,6 +269,139 @@
 
 @section('scripts')
     @parent
+    <script src="https://unpkg.com/vue"></script>
+  <!-- component template -->
+    <script type="text/x-template" id="grid-template">
+      <table>
+        <thead>
+          <tr>
+            <th v-for="key in columns"
+              @click="sortBy(key)"
+              :class="{ active: sortKey == key }">
+              @{{ key | capitalize }}
+              <span class="arrow" :class="sortOrders[key] > 0 ? 'asc' : 'dsc'">
+              </span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="entry in filteredData">
+            <td v-for="key in columns">
+              @{{entry[key]}}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </script>
+    <script type="text/javascript">
+        // register the grid component
+        Vue.component('demo-grid', {
+          template: '#grid-template',
+          props: {
+            data: Array,
+            columns: Array,
+            filterKey: String
+          },
+          data: function () {
+            var sortOrders = {}
+            this.columns.forEach(function (key) {
+              sortOrders[key] = 1
+            })
+            return {
+              sortKey: '',
+              sortOrders: sortOrders
+            }
+          },
+          computed: {
+            filteredData: function () {
+              var sortKey = this.sortKey
+              var filterKey = this.filterKey && this.filterKey.toLowerCase()
+              var order = this.sortOrders[sortKey] || 1
+              var data = this.data
+              if (filterKey) {
+                data = data.filter(function (row) {
+                  return Object.keys(row).some(function (key) {
+                    return String(row[key]).toLowerCase().indexOf(filterKey) > -1
+                  })
+                })
+              }
+              if (sortKey) {
+                data = data.slice().sort(function (a, b) {
+                  a = a[sortKey]
+                  b = b[sortKey]
+                  return (a === b ? 0 : a > b ? 1 : -1) * order
+                })
+              }
+              return data
+            }
+          },
+          filters: {
+            capitalize: function (str) {
+              return str.charAt(0).toUpperCase() + str.slice(1)
+            }
+          },
+          methods: {
+            sortBy: function (key) {
+              this.sortKey = key
+              this.sortOrders[key] = this.sortOrders[key] * -1
+            }
+          }
+        })
 
+        // bootstrap the demo
+        var demo = new Vue({
+          el: '#demo',
+          data: {
+            searchQuery: '',
+            gridColumns: ['fname', 'lname','email','lbsCO2'],
+            gridData: [
+              { fname: 'Chuck', lname: 'Norris', email: 'chuck@rocks.com',lbsCO2 : 5000 },
+              { fname: 'Bruce', lname: 'Lee', email:'whataguy@thebest.com',lbsCO2:9000 },
+              { fname: 'Jackie', lname: 'Chan', email:'avoidit@meoh.com', lbsCO2:7000 }
+            ]
+          }
+        })
+        var postScoreForm = new Vue({
+            el: '#postScoreForm',
+            data: {
+                fname:'',
+                lname:'',
+                email:'',
+                lbsCO2: ''
+            },
+            methods: {
+              postScore: function(event){
+                  
+                  if (this.fname&&this.lname&&this.email&&this.lbsCO2) {
+                      
+                      demo.gridData.push({
+                        fname:this.fname,
+                        lname:this.lname,
+                        email:this.email,
+                        lbsCO2:this.lbsCO2
+                      });
+                     
+                  };
+
+              },
+
+              cleardata: function(){
+                
+                alert('you are on the Carbon Scoreboard! checkit out!');
+                this.fname = '';
+                this.lname = '';
+                this.email = '';
+                this.lbsCO2 = '';
+              }
+          }
+
+        });
+
+        Vue.directive('clearform',{
+            componentUpdated: function(el){
+               postScoreForm.cleardata();
+            }
+        })
+    </script>
   
 @endsection
